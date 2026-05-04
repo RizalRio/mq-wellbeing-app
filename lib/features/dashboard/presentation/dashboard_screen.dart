@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'dashboard_controller.dart';
+import '../../mood_tracker/presentation/mood_screen.dart';
+
+class DashboardScreen extends ConsumerWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Membaca indeks tab saat ini dari provider
+    final currentIndex = ref.watch(dashboardNavProvider);
+
+    // Daftar halaman sementara (Placeholder) untuk MVP
+    final pages = [
+      const MoodScreen(), // Menggantikan placeholder "Halaman Utama"
+      const Center(child: Text('Halaman Guided Journaling')),
+      const Center(child: Text('Halaman Habit Logger')),
+      const Center(child: Text('Halaman Profil & Pengaturan')),
+    ];
+
+    return Scaffold(
+      // IndexedStack menyimpan state dari setiap tab
+      body: IndexedStack(index: currentIndex, children: pages),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: currentIndex,
+          onTap: (index) {
+            // Memperbarui state indeks saat tab ditekan
+            ref.read(dashboardNavProvider.notifier).setIndex(index);
+          },
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          selectedItemColor: Theme.of(context).colorScheme.primary,
+          unselectedItemColor: Theme.of(
+            context,
+          ).colorScheme.onSurface.withOpacity(0.5),
+          showUnselectedLabels: true,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Beranda'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.book_outlined),
+              label: 'Jurnal',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.check_circle_outline),
+              label: 'Habit',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              label: 'Profil',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
