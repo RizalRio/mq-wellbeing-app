@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Ditambahkan untuk HapticFeedback
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'register_screen.dart';
 import 'auth_controller.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 
-// Kita menggunakan ConsumerStatefulWidget agar bisa menggunakan ref (Riverpod)
-// dan Controller untuk TextField secara bersamaan.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -26,30 +26,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. ref.listen digunakan untuk efek samping (side-effects) seperti navigasi atau menampilkan peringatan.
-    // Ini dipanggil sekali setiap ada perubahan state, bukan pada saat proses render UI.
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // 1. ref.listen untuk efek samping (navigasi & notifikasi)
     ref.listen(authControllerProvider, (previous, next) {
       next.whenOrNull(
         error: (error, stackTrace) {
+          HapticFeedback.vibrate(); // Getaran peringatan saat gagal
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(error.toString()),
-              backgroundColor: Colors.redAccent,
+              backgroundColor:
+                  Colors.redAccent.shade200, // Warna merah yang lebih pudar
               behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         },
         data: (user) {
           if (user != null) {
+            HapticFeedback.mediumImpact(); // Getaran sukses
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Selamat datang kembali!'),
-                backgroundColor: Colors.green,
+              SnackBar(
+                content: const Text('Senang melihatmu kembali!'),
+                backgroundColor: colorScheme
+                    .secondary, // Menggunakan warna Soft Teal dari tema
                 behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
 
-            // Navigasi ke Dashboard dan hapus riwayat rute sebelumnya agar pengguna tidak bisa kembali ke halaman login dengan menekan tombol "Back"
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const DashboardScreen()),
@@ -59,36 +70,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     });
 
-    // 2. ref.watch digunakan untuk membangun ulang UI saat state berubah (misalnya saat loading).
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState.isLoading;
 
     return Scaffold(
+      // Background otomatis mengikuti scaffoldBackgroundColor (Warm Beige)
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 32.0,
+              vertical: 24.0,
+            ), // Padding samping sedikit dilebarkan
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Menggunakan tipografi dari AppTheme
+                // Ikon Jangkar Visual yang Menenangkan
+                Icon(
+                  Icons.spa_rounded,
+                  size: 64,
+                  color: colorScheme.primary.withOpacity(0.8),
+                ),
+                const SizedBox(height: 24),
+
+                // Microcopy yang empatik
                 Text(
-                  'Selamat Datang Kembali',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.displayLarge?.copyWith(fontSize: 28),
+                  'Mari kembali terhubung',
+                  style: theme.textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Silakan masuk untuk melanjutkan perjalanan wellbeing kamu.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  'Lanjutkan perjalanan wellbeing-mu hari ini.',
+                  style: theme.textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 48),
-
-                // Form Input
+                const SizedBox(
+                  height: 48,
+                ), // Ruang napas (whitespace) yang luas
+                // Form Input (Otomatis mewarisi gaya dari app_theme.dart)
                 TextField(
                   controller: _emailController,
                   decoration: const InputDecoration(
@@ -98,7 +119,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   enabled: !isLoading,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 TextField(
                   controller: _passwordController,
                   decoration: const InputDecoration(
@@ -108,32 +129,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   obscureText: true,
                   enabled: !isLoading,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
 
-                // Tombol Login dengan indikator loading
+                // Tombol Login
                 ElevatedButton(
                   onPressed: isLoading
                       ? null
                       : () {
-                          final email = _emailController.text;
-                          final password = _passwordController.text;
+                          HapticFeedback.lightImpact(); // Getaran saat tombol ditekan
+                          final email = _emailController.text.trim();
+                          final password = _passwordController.text.trim();
+
                           if (email.isNotEmpty && password.isNotEmpty) {
-                            // Memanggil fungsi login di AuthController
                             ref
                                 .read(authControllerProvider.notifier)
                                 .login(email, password);
                           } else {
+                            HapticFeedback.heavyImpact(); // Peringatan form kosong
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Harap isi email dan kata sandi'),
+                              SnackBar(
+                                content: const Text(
+                                  'Mohon lengkapi email dan kata sandimu ya.',
+                                ),
+                                backgroundColor: colorScheme.primary,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             );
                           }
                         },
                   child: isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          height: 24,
+                          width: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -141,15 +171,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         )
-                      : const Text('Masuk'),
+                      : const Text(
+                          'Masuk',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // Navigasi ke halaman Register
+                // Navigasi ke halaman Register dengan warna sekunder (Soft Teal)
                 TextButton(
                   onPressed: isLoading
                       ? null
                       : () {
+                          HapticFeedback.lightImpact();
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -158,9 +195,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           );
                         },
                   style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: colorScheme.secondary,
+                    minimumSize: const Size(
+                      double.infinity,
+                      48,
+                    ), // Target sentuh inklusif
                   ),
-                  child: const Text('Belum punya akun? Daftar di sini'),
+                  child: const Text(
+                    'Belum punya akun? Yuk, daftar di sini',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),

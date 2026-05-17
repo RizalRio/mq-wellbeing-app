@@ -7,18 +7,19 @@ part 'mood_controller.g.dart';
 class MoodController extends _$MoodController {
   @override
   AsyncValue<void> build() {
-    return const AsyncValue.data(null);
+    return const AsyncData(null);
   }
 
-  Future<void> submitDailyMood(
-    int score,
-    List<String> tags,
-    String note,
-  ) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
+  Future<bool> submit(int scale, List<String> tags, String note) async {
+    state = const AsyncLoading();
+    try {
       final repository = ref.read(moodRepositoryProvider);
-      await repository.submitMood(score, tags, note);
-    });
+      await repository.submitMood(scale, tags, note);
+      state = const AsyncData(null);
+      return true; // Mengembalikan true jika sukses
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      return false; // Mengembalikan false jika gagal
+    }
   }
 }

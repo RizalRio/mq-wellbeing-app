@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'dashboard_controller.dart';
 import '../../mood_tracker/presentation/mood_screen.dart';
+import '../../journal/presentation/journal_screen.dart';
+import '../../habit/presentation/habit_screen.dart';
+import '../../auth/presentation/profile_screen.dart';
+import 'home_tab_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -14,10 +18,11 @@ class DashboardScreen extends ConsumerWidget {
 
     // Daftar halaman sementara (Placeholder) untuk MVP
     final pages = [
+      const HomeTabScreen(), // Menggantikan placeholder "Halaman Utama"
       const MoodScreen(), // Menggantikan placeholder "Halaman Utama"
-      const Center(child: Text('Halaman Guided Journaling')),
-      const Center(child: Text('Halaman Habit Logger')),
-      const Center(child: Text('Halaman Profil & Pengaturan')),
+      const JournalScreen(), // Menggantikan placeholder "Halaman Jurnal"
+      const HabitScreen(), // Menggantikan placeholder "Halaman Habit"
+      const ProfileScreen(), // Menggantikan placeholder "Halaman Profil"
     ];
 
     return Scaffold(
@@ -47,7 +52,14 @@ class DashboardScreen extends ConsumerWidget {
           ).colorScheme.onSurface.withOpacity(0.5),
           showUnselectedLabels: true,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.mood), label: 'Beranda'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              label: 'Beranda',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.mood_outlined),
+              label: 'Mood',
+            ),
             BottomNavigationBarItem(
               icon: Icon(Icons.book_outlined),
               label: 'Jurnal',

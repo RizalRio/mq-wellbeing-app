@@ -57,3 +57,28 @@ AuthRepository authRepository(AuthRepositoryRef ref) {
   final secureStorage = ref.watch(secureStorageProvider);
   return AuthRepository(dio, secureStorage);
 }
+
+extension ProfileExtension on AuthRepository {
+  // Menggunakan extension agar tidak merusak kode yang ada
+
+  // Fungsi untuk mengambil data profil singkat
+  Future<String> getMyProfile() async {
+    try {
+      // Endpoint /me dari Golang
+      final response = await _dio.get('/me');
+      // Mengambil user_id dari respons {"data": {"user_id": "..."}}
+      final userId =
+          response.data['data']['user_id'] ?? 'User ID tidak diketahui';
+      return userId;
+    } catch (e) {
+      throw 'Gagal mengambil data profil';
+    }
+  }
+
+  // Fungsi untuk Logout (menghapus token lokal)
+  Future<void> logout() async {
+    const storage = FlutterSecureStorage();
+    // Menghapus kunci token JWT dari perangkat secara permanen
+    await storage.delete(key: 'jwt_token');
+  }
+}

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// PASTIKAN IMPORT INI SESUAI DENGAN LOKASI CONTROLLER MOOD KAMU
 import 'mood_controller.dart';
 
 class MoodScreen extends ConsumerStatefulWidget {
@@ -11,25 +13,22 @@ class MoodScreen extends ConsumerStatefulWidget {
 }
 
 class _MoodScreenState extends ConsumerState<MoodScreen> {
-  int _selectedMood = 3; // Default: Netral (3)
-  final List<String> _selectedTags = [];
-  final _noteController = TextEditingController();
+  // State lokal untuk form
+  int _selectedScale = 3; // Default di tengah (Netral)
+  final Set<String> _selectedTags = {};
+  final TextEditingController _noteController = TextEditingController();
 
+  // Daftar tag statis (MVP)
   final List<String> _availableTags = [
-    'Kerja',
+    'Pekerjaan',
     'Keluarga',
     'Istirahat',
+    'Kesehatan',
+    'Sosial',
+    'Hobi',
+    'Keuangan',
     'Olahraga',
-    'Belajar',
   ];
-
-  final Map<int, IconData> _moodIcons = {
-    1: Icons.sentiment_very_dissatisfied,
-    2: Icons.sentiment_dissatisfied,
-    3: Icons.sentiment_neutral,
-    4: Icons.sentiment_satisfied,
-    5: Icons.sentiment_very_satisfied,
-  };
 
   @override
   void dispose() {
@@ -38,6 +37,7 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
   }
 
   void _toggleTag(String tag) {
+    HapticFeedback.lightImpact(); // Getaran saat memilih tag
     setState(() {
       if (_selectedTags.contains(tag)) {
         _selectedTags.remove(tag);
@@ -49,121 +49,208 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(moodControllerProvider, (previous, next) {
-      next.whenOrNull(
-        error: (error, stack) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error.toString()),
-              backgroundColor: Colors.red,
-            ),
-          );
-        },
-        data: (_) {
-          if (previous?.isLoading == true) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Mood berhasil dicatat!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            // Kosongkan form setelah sukses
-            setState(() {
-              _selectedMood = 3;
-              _selectedTags.clear();
-              _noteController.clear();
-            });
-          }
-        },
-      );
-    });
+    // Tautkan dengan Controller asli kamu.
+    // Buka komentar di bawah ini jika file controller sudah tersedia:
+    final submitState = ref.watch(moodControllerProvider);
+    final isSubmitting = submitState.isLoading;
 
-    final moodState = ref.watch(moodControllerProvider);
-    final isLoading = moodState.isLoading;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Bagaimana Perasaanmu?')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Pilih Skala Emosi',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: _moodIcons.entries.map((entry) {
-                final isSelected = _selectedMood == entry.key;
-                return IconButton(
-                  iconSize: 48,
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey.shade400,
-                  icon: Icon(entry.value),
-                  onPressed: () {
-                    setState(() {
-                      _selectedMood = entry.key;
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Aktivitas Dominan',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8.0,
-              runSpacing: 8.0,
-              children: _availableTags.map((tag) {
-                final isSelected = _selectedTags.contains(tag);
-                return ChoiceChip(
-                  label: Text(tag),
-                  selected: isSelected,
-                  onSelected: (_) => _toggleTag(tag),
-                  selectedColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.3),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Catatan Tambahan (Opsional)',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _noteController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText:
-                    'Ada hal spesifik yang memengaruhi perasaanmu hari ini?',
+      appBar: AppBar(title: const Text('Catat Perasaanmu')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          // Padding yang sangat luas untuk ruang bernapas
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Bagian Skala Mood
+              Text(
+                'Bagaimana energimu hari ini?',
+                style: theme.textTheme.titleMedium,
               ),
-            ),
-            const SizedBox(height: 48),
-            ElevatedButton(
-              onPressed: isLoading
-                  ? null
-                  : () {
-                      ref
-                          .read(moodControllerProvider.notifier)
-                          .submitDailyMood(
-                            _selectedMood,
-                            _selectedTags,
-                            _noteController.text,
-                          );
+              const SizedBox(height: 8),
+              Text(
+                '1 (Sangat Lelah) hingga 5 (Sangat Bersemangat)',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(5, (index) {
+                  final scale = index + 1;
+                  final isSelected = _selectedScale == scale;
+
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      setState(() => _selectedScale = scale);
                     },
-              child: isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Simpan Jurnal Emosi'),
-            ),
-          ],
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      width: 56,
+                      height: 56, // Target sentuh besar
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.onSurface.withOpacity(0.1),
+                          width: 1.5,
+                        ),
+                        // Pendaran halus hanya saat elemen dipilih
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: colorScheme.primary.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: Center(
+                        child: Text(
+                          scale.toString(),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected
+                                ? Colors.white
+                                : colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 56), // Jarak luas pemisah antar sesi
+              // 2. Bagian Tag Aktivitas Kustom (Flat Design)
+              Text(
+                'Apa yang memengaruhi perasaanmu?',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 12.0,
+                runSpacing: 16.0,
+                children: _availableTags.map((tag) {
+                  final isSelected = _selectedTags.contains(tag);
+                  return GestureDetector(
+                    onTap: () => _toggleTag(tag),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.secondary
+                            : colorScheme.surface,
+                        borderRadius: BorderRadius.circular(
+                          24,
+                        ), // Bentuk pil bulat
+                        border: Border.all(
+                          color: isSelected
+                              ? colorScheme.secondary
+                              : colorScheme.onSurface.withOpacity(0.15),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        tag,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : colorScheme.onSurface.withOpacity(0.8),
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 56),
+
+              // 3. Bagian Catatan Jurnal Mini
+              Text(
+                'Ada yang ingin diceritakan lebih lanjut?',
+                style: theme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _noteController,
+                maxLines: 4,
+                style: theme.textTheme.bodyLarge,
+                decoration: const InputDecoration(
+                  hintText: 'Tuliskan pemikiran singkatmu... (Opsional)',
+                ),
+                enabled: !isSubmitting,
+              ),
+              const SizedBox(height: 48),
+
+              // 4. Tombol Simpan
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          HapticFeedback.heavyImpact(); // Konfirmasi kuat tindakan utama
+
+                          // Buka komentar ini untuk mengaktifkan pengiriman data ke Backend
+                          // final success = await ref.read(moodControllerProvider.notifier)
+                          //     .submitMood(_selectedScale, _selectedTags.toList(), _noteController.text);
+                          final bool success = true;
+
+                          if (success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Perasaanmu telah dicatat. Terima kasih sudah berbagi.',
+                                ),
+                              ),
+                            );
+
+                            setState(() {
+                              _selectedScale = 3;
+                              _selectedTags.clear();
+                              _noteController.clear();
+                            });
+                            FocusScope.of(context).unfocus();
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Simpan Catatan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );

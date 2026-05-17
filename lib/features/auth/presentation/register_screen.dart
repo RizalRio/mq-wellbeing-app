@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Ditambahkan untuk HapticFeedback
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_controller.dart';
+// Import halaman login untuk rute kembali
+import 'login_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -11,7 +14,8 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _nameController = TextEditingController();
+  final _nameController =
+      TextEditingController(); // Opsional: Untuk sapaan di dasbor
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -25,28 +29,43 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Memantau hasil dari aksi registrasi
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // 1. Mendengarkan perubahan state untuk efek samping (Notifikasi & Navigasi)
     ref.listen(authControllerProvider, (previous, next) {
       next.whenOrNull(
         error: (error, stackTrace) {
+          HapticFeedback.vibrate(); // Getaran saat ada kendala
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(error.toString()),
-              backgroundColor: Colors.redAccent,
+              backgroundColor: Colors.redAccent.shade200,
               behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         },
         data: (user) {
+          // Asumsi: Setelah register berhasil, langsung login atau kembali ke halaman login
           if (user != null) {
+            HapticFeedback.mediumImpact(); // Getaran sukses
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Registrasi berhasil! Silakan masuk.'),
-                backgroundColor: Colors.green,
+              SnackBar(
+                content: const Text(
+                  'Langkah pertamamu berhasil! Selamat datang.',
+                ),
+                backgroundColor: colorScheme.secondary,
                 behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
-            // Kembali ke halaman login setelah registrasi sukses
+
+            // Kembali ke halaman login atau langsung tembus ke Dasbor (sesuaikan alurmu)
             Navigator.pop(context);
           }
         },
@@ -60,22 +79,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 32.0,
+              vertical: 24.0,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Ikon Jangkar Visual (Self Improvement)
+                Icon(
+                  Icons.self_improvement_rounded,
+                  size: 64,
+                  color: colorScheme.secondary.withOpacity(
+                    0.8,
+                  ), // Menggunakan Soft Teal
+                ),
+                const SizedBox(height: 24),
+
+                // Microcopy yang empatik
                 Text(
-                  'Mulai Perjalananmu',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.displayLarge?.copyWith(fontSize: 28),
+                  'Halo, Kawan Baru',
+                  style: theme.textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Buat akun untuk mulai melacak kesejahteraan emosional dan membangun kebiasaan positif.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  'Mari mulai perjalanan wellbeing-mu hari ini.',
+                  style: theme.textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
@@ -84,12 +115,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 TextField(
                   controller: _nameController,
                   decoration: const InputDecoration(
-                    labelText: 'Nama Lengkap',
+                    labelText: 'Nama Panggilan',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
+                  textCapitalization: TextCapitalization.words,
                   enabled: !isLoading,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 TextField(
                   controller: _emailController,
                   decoration: const InputDecoration(
@@ -99,7 +131,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   enabled: !isLoading,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 TextField(
                   controller: _passwordController,
                   decoration: const InputDecoration(
@@ -109,35 +141,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   obscureText: true,
                   enabled: !isLoading,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
 
-                // Tombol Daftar
+                // Tombol Mulai Perjalanan
                 ElevatedButton(
                   onPressed: isLoading
                       ? null
                       : () {
-                          final name = _nameController.text;
-                          final email = _emailController.text;
-                          final password = _passwordController.text;
+                          HapticFeedback.lightImpact();
+                          final name = _nameController.text.trim();
+                          final email = _emailController.text.trim();
+                          final password = _passwordController.text.trim();
 
-                          if (name.isNotEmpty &&
-                              email.isNotEmpty &&
-                              password.isNotEmpty) {
+                          if (email.isNotEmpty &&
+                              password.isNotEmpty &&
+                              name.isNotEmpty) {
+                            // Sesuaikan fungsi register ini dengan AuthController Golang kamu
+                            // Jika controllermu tidak butuh 'name', hapus variabel 'name' dan blok terkait
                             ref
                                 .read(authControllerProvider.notifier)
                                 .register(name, email, password);
                           } else {
+                            HapticFeedback.heavyImpact();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Harap isi semua kolom'),
+                              SnackBar(
+                                content: const Text(
+                                  'Bantu kami mengenalmu dengan mengisi semua kolom ya.',
+                                ),
+                                backgroundColor: colorScheme.primary,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                             );
                           }
                         },
                   child: isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          height: 24,
+                          width: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -145,21 +188,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             ),
                           ),
                         )
-                      : const Text('Daftar'),
+                      : const Text(
+                          'Mulai Perjalanan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
                 // Navigasi kembali ke halaman Login
                 TextButton(
                   onPressed: isLoading
                       ? null
                       : () {
-                          Navigator.pop(context);
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(
+                            context,
+                          ); // Cukup di-pop karena halaman login ada di bawahnya
                         },
                   style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: colorScheme.secondary,
+                    minimumSize: const Size(double.infinity, 48),
                   ),
-                  child: const Text('Sudah punya akun? Masuk di sini'),
+                  child: const Text(
+                    'Sudah terdaftar? Kembali untuk masuk',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),
