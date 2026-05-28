@@ -8,7 +8,7 @@ class Habit {
   factory Habit.fromJson(Map<String, dynamic> json) {
     return Habit(
       id: json['id']?.toString() ?? '',
-      title: json['title'] ?? '',
+      title: json['title']?.toString() ?? 'Tanpa Judul',
       frequency: json['frequency'] ?? 'daily',
     );
   }

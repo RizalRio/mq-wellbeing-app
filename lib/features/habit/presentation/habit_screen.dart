@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'habit_controller.dart';
+import 'habit_history_screen.dart'; // Layar riwayat kebiasaan yang sudah diperbaiki dengan data dinamis
 
 class HabitScreen extends ConsumerStatefulWidget {
   const HabitScreen({super.key});
@@ -46,11 +47,20 @@ class _HabitScreenState extends ConsumerState<HabitScreen> {
               final title = titleController.text.trim();
               if (title.isNotEmpty) {
                 HapticFeedback.mediumImpact();
-                Navigator.pop(context);
+
+                // Proses penyimpanan data ke backend
                 final success = await ref
                     .read(habitControllerProvider.notifier)
                     .addHabit(title);
+
                 if (success && context.mounted) {
+                  // PERBAIKAN 1: Paksa layar riwayat memuat ulang data dari API
+                  ref.invalidate(habitHistoryProvider);
+
+                  // PERBAIKAN 2: Tutup Form/Dialog
+                  Navigator.pop(context);
+
+                  // Tampilkan notifikasi
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Satu langkah baik telah ditambahkan.'),

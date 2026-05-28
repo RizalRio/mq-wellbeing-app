@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // PASTIKAN IMPORT INI SESUAI DENGAN LOKASI CONTROLLER MOOD KAMU
 import 'mood_controller.dart';
+import 'mood_history_screen.dart';
 
 class MoodScreen extends ConsumerStatefulWidget {
   const MoodScreen({super.key});
@@ -209,11 +210,20 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                           HapticFeedback.heavyImpact(); // Konfirmasi kuat tindakan utama
 
                           // Buka komentar ini untuk mengaktifkan pengiriman data ke Backend
-                          // final success = await ref.read(moodControllerProvider.notifier)
-                          //     .submitMood(_selectedScale, _selectedTags.toList(), _noteController.text);
-                          final bool success = true;
+                          final success = await ref
+                              .read(moodControllerProvider.notifier)
+                              .submit(
+                                _selectedScale,
+                                _selectedTags.toList(),
+                                _noteController.text,
+                              );
+                          //final bool success = true;
 
                           if (success && context.mounted) {
+                            // PERBAIKAN 1: Paksa Riverpod untuk memuat ulang data riwayat
+                            ref.invalidate(moodHistoryProvider);
+
+                            // Tampilkan Notifikasi
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -222,12 +232,17 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                               ),
                             );
 
-                            setState(() {
-                              _selectedScale = 3;
-                              _selectedTags.clear();
-                              _noteController.clear();
-                            });
-                            FocusScope.of(context).unfocus();
+                            // PERBAIKAN 2: Tutup halaman form dan kembali ke layar riwayat
+                            // (Gantikan logika reset form 'setState' sebelumnya dengan ini)
+                            Navigator.pop(context);
+                          } else if (!success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Gagal menyimpan catatan. Coba lagi nanti.',
+                                ),
+                              ),
+                            );
                           }
                         },
                   child: isSubmitting

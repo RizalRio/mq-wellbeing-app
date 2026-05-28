@@ -1,75 +1,95 @@
+// lib/features/dashboard/presentation/dashboard_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart'; // Untuk HapticFeedback
 
-import 'dashboard_controller.dart';
-import '../../mood_tracker/presentation/mood_screen.dart';
-import '../../journal/presentation/journal_screen.dart';
-import '../../habit/presentation/habit_screen.dart';
-import '../../auth/presentation/profile_screen.dart';
-import 'home_tab_screen.dart';
+// Import fitur-fitur yang sudah kita buat
+import 'home_tab_screen.dart'; // Tab 1 (Sapaan & Insight)
+// Import AnalyticTabScreen (Baru), HabitScreen, dll.
+import '../../reflection/presentation/feeling_tab_screen.dart'; // Tab 2 (Rangkuman - Akan Dibuat)
+import '../../auth/presentation/profile_screen.dart'; // Tab 5
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Membaca indeks tab saat ini dari provider
-    final currentIndex = ref.watch(dashboardNavProvider);
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
 
-    // Daftar halaman sementara (Placeholder) untuk MVP
-    final pages = [
-      const HomeTabScreen(), // Menggantikan placeholder "Halaman Utama"
-      const MoodScreen(), // Menggantikan placeholder "Halaman Utama"
-      const JournalScreen(), // Menggantikan placeholder "Halaman Jurnal"
-      const HabitScreen(), // Menggantikan placeholder "Halaman Habit"
-      const ProfileScreen(), // Menggantikan placeholder "Halaman Profil"
-    ];
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _selectedIndex = 0;
+
+  // Daftar halaman berdasarkan tab navigasi SAMPADA
+  final List<Widget> _pages = [
+    const HomeTabScreen(), // Tab 1 (Insight & Sapaan)
+    const FeelingTabScreen(), // Tab 2 (Rangkuman - Akan Dibuat)
+    const Center(child: Text('Halaman Konsul')),
+    // const CommunityScreen(),   // Tab 4 (Komunitas - v2+)
+    const Center(
+      child: Text('Komunitas Ruang Aman (v0.1)'),
+    ), // Placeholder Tab 4
+    const ProfileScreen(), // Tab 5
+  ];
+
+  void _onItemTapped(int index) {
+    HapticFeedback.lightImpact(); // Getaran lembut saat pindah tab (Adaptive UI)
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      // IndexedStack menyimpan state dari setiap tab
-      body: IndexedStack(index: currentIndex, children: pages),
+      body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+          border: Border(
+            top: BorderSide(
+              color: colorScheme.onSurface.withOpacity(0.05),
+              width: 1,
             ),
-          ],
+          ),
         ),
         child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: (index) {
-            // Memperbarui state indeks saat tab ditekan
-            ref.read(dashboardNavProvider.notifier).setIndex(index);
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          selectedItemColor: Theme.of(context).colorScheme.primary,
-          unselectedItemColor: Theme.of(
-            context,
-          ).colorScheme.onSurface.withOpacity(0.5),
-          showUnselectedLabels: true,
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          elevation: 0,
+          backgroundColor: colorScheme.surface,
+          type: BottomNavigationBarType.fixed, // Penting untuk >3 tab
+          selectedItemColor: colorScheme.primary, // Sage Green aktif
+          unselectedItemColor: colorScheme.onSurface.withOpacity(0.5),
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(fontSize: 12),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
+              icon: Icon(Icons.spa_outlined),
+              activeIcon: Icon(Icons.spa),
               label: 'Beranda',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.mood_outlined),
-              label: 'Mood',
+              icon: Icon(Icons.bar_chart_outlined),
+              activeIcon: Icon(Icons.bar_chart),
+              label: 'Feeling',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.book_outlined),
-              label: 'Jurnal',
+              icon: Icon(Icons.event_available_outlined),
+              activeIcon: Icon(Icons.event_available),
+              label: 'Konsultasi',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.check_circle_outline),
-              label: 'Habit',
+              icon: Icon(Icons.forum_outlined),
+              activeIcon: Icon(Icons.forum),
+              label: 'Komunitas',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
               label: 'Profil',
             ),
           ],

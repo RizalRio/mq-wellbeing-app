@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'journal_controller.dart';
+import 'journal_history_screen.dart'; // Import layar riwayat jurnal
 
 class JournalScreen extends ConsumerStatefulWidget {
   const JournalScreen({super.key});
@@ -107,13 +108,26 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                             .submit(content);
 
                         if (success && context.mounted) {
+                          // 1. Hancurkan cache data lama agar Riverpod menarik data baru
+                          ref.invalidate(journalHistoryProvider);
+
+                          // 2. Tampilkan notifikasi sukses
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Jurnal tersimpan dengan aman.'),
                             ),
                           );
-                          _contentController.clear();
-                          FocusScope.of(context).unfocus();
+
+                          // 3. Tutup layar formulir
+                          Navigator.pop(context);
+                        } else if (!success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Gagal menyimpan jurnal. Coba lagi nanti.',
+                              ),
+                            ),
+                          );
                         }
                       },
                 child: isSubmitting
