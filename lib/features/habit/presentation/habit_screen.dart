@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'habit_controller.dart';
-import 'habit_history_screen.dart'; // Layar riwayat kebiasaan yang sudah diperbaiki dengan data dinamis
 
 class HabitScreen extends ConsumerStatefulWidget {
   const HabitScreen({super.key});
@@ -12,8 +11,6 @@ class HabitScreen extends ConsumerStatefulWidget {
 }
 
 class _HabitScreenState extends ConsumerState<HabitScreen> {
-  final Set<String> _completedToday = {};
-
   void _showAddHabitDialog(BuildContext context) {
     HapticFeedback.lightImpact();
     final titleController = TextEditingController();
@@ -55,7 +52,7 @@ class _HabitScreenState extends ConsumerState<HabitScreen> {
 
                 if (success && context.mounted) {
                   // PERBAIKAN 1: Paksa layar riwayat memuat ulang data dari API
-                  ref.invalidate(habitHistoryProvider);
+                  ref.invalidate(habitControllerProvider);
 
                   // PERBAIKAN 2: Tutup Form/Dialog
                   Navigator.pop(context);
@@ -105,7 +102,11 @@ class _HabitScreenState extends ConsumerState<HabitScreen> {
             itemCount: habits.length,
             itemBuilder: (context, index) {
               final habit = habits[index];
-              final isCompleted = _completedToday.contains(habit.id);
+
+              // 1. Logika Cerdas: Cek apakah hari ini tercentang berdasarkan array Backend
+              // DateTime.now().weekday mengembalikan 1 (Senin) hingga 7 (Minggu)
+              final int todayIndex = DateTime.now().weekday - 1;
+              final bool isCompleted = habit.weeklyStatus[todayIndex];
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -138,33 +139,32 @@ class _HabitScreenState extends ConsumerState<HabitScreen> {
                     ),
                   ),
                   trailing: Transform.scale(
-                    scale: 1.2, // Memperbesar area interaksi
+                    scale: 1.2,
                     child: Checkbox(
-                      value: isCompleted,
+                      value: isCompleted, // 2. Gunakan status dari backend
                       activeColor: theme.colorScheme.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      side: BorderSide(
-                        color: theme.colorScheme.primary.withOpacity(0.5),
-                        width: 1.5,
-                      ),
-                      onChanged: isCompleted
-                          ? null
-                          : (bool? value) async {
-                              if (value == true) {
-                                HapticFeedback.lightImpact(); // Getaran saat dicentang
-                                setState(() => _completedToday.add(habit.id));
-                                final success = await ref
-                                    .read(habitControllerProvider.notifier)
-                                    .logHabitDone(habit.id);
-                                if (!success) {
-                                  setState(
-                                    () => _completedToday.remove(habit.id),
-                                  );
-                                }
-                              }
-                            },
+                      onChanged: (bool? newValue) async {
+                        if (newValue == null) return;
+
+                        // 3. Kirim ke Golang menggunakan habit.id
+                        final success = await ref
+                            .read(habitControllerProvider.notifier)
+                            .toggleHabitLog(habit.id, newValue);
+
+                        if (success && context.mounted) {
+                          // 4. Reload data master secara keseluruhan (KISS)
+                          ref.invalidate(habitControllerProvider);
+                          HapticFeedback.lightImpact();
+                        } else if (!success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Gagal mencatat rutinitas. Periksa koneksi Anda.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ),
                 ),

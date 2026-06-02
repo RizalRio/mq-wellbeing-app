@@ -1,40 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/api/dio_client.dart';
 
-import 'habit_screen.dart'; // Menggunakan dialog penambahan habit dari screen lama
-
-// 1. PROVIDER DINAMIS (Integrasi JSON Master Habit)
-final habitHistoryProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-      try {
-        // 1. Ambil data dari API
-        final dio = ref.watch(
-          dioProvider,
-        ); // Sesuaikan dengan instance Dio kamu
-        final response = await dio.get('/habits'); // Sesuaikan rute
-
-        // 2. PERBAIKAN: Deteksi Struktur JSON yang sangat aman
-        List<dynamic> responseData = [];
-
-        if (response.data is List) {
-          // Jika JSON diawali dengan [ ... ] (Array langsung)
-          responseData = response.data;
-        } else if (response.data is Map && response.data['data'] != null) {
-          // Jika JSON diawali dengan { "data": [ ... ] } (Objek)
-          responseData = response.data['data'];
-        } else {
-          // Jika kosong atau format tidak dikenali
-          responseData = [];
-        }
-
-        // 3. Kembalikan data yang sudah dipetakan dengan aman
-        return responseData.map((e) => e as Map<String, dynamic>).toList();
-      } catch (e) {
-        throw Exception('Gagal memuat data habit: $e');
-      }
-    });
+import 'habit_screen.dart';
+import 'habit_controller.dart';
+import '../domain/habit.dart';
 
 class HabitHistoryScreen extends ConsumerWidget {
   const HabitHistoryScreen({super.key});
@@ -43,7 +13,10 @@ class HabitHistoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final historyAsync = ref.watch(habitHistoryProvider);
+
+    // Membaca langsung dari controller utama (Single Source of Truth)
+    // Tidak perlu lagi membuat FutureProvider terpisah
+    final historyAsync = ref.watch(habitControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Jejak Kebiasaan'), centerTitle: true),
@@ -69,11 +42,10 @@ class HabitHistoryScreen extends ConsumerWidget {
           },
         ),
       ),
-      // FAB Sentral untuk penambahan kebiasaan baru
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           HapticFeedback.lightImpact();
-          // Panggil HabitScreen lama tempat dialog form pembuatan berada
+          // Navigasi ke layar pembuatan habit baru
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const HabitScreen()),
@@ -91,39 +63,13 @@ class HabitHistoryScreen extends ConsumerWidget {
     );
   }
 
-  // Widget Bantuan: Kartu Visualisasi Kebiasaan
-  Widget _buildHabitHistoryCard(
-    BuildContext context,
-    Map<String, dynamic> habit,
-  ) {
+  // Widget Bantuan: Kartu Visualisasi Kebiasaan (Menerima objek Habit)
+  Widget _buildHabitHistoryCard(BuildContext context, Habit habit) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Label statis untuk kalender Senin - Minggu
     final List<String> days = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
-
-    // 1. Ekstraksi Judul (Aman)
-    final String title = habit['title']?.toString() ?? 'Kebiasaan';
-
-    // 2. PERBAIKAN: Ekstraksi Angka yang Sangat Aman (Anti-Crash)
-    int streak = 0;
-    if (habit['streak_count'] != null) {
-      // Ubah apapun yang datang dari API menjadi String dulu, baru di-parse ke Int
-      streak = int.tryParse(habit['streak_count'].toString()) ?? 0;
-    }
-
-    // 3. PERBAIKAN: Ekstraksi Array yang Sangat Aman
-    List<dynamic> weeklyStatus = [
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ];
-    if (habit['weekly_status'] is List) {
-      weeklyStatus = habit['weekly_status'] as List<dynamic>;
-    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -141,13 +87,14 @@ class HabitHistoryScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  title, // Membaca judul dinamis dari JSON
+                  habit.title,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-              if (streak > 0)
+              // Menampilkan lencana api jika streak lebih dari 0
+              if (habit.streakCount > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -166,7 +113,7 @@ class HabitHistoryScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '$streak Hari',
+                        '${habit.streakCount} Hari',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.orange.shade700,
                           fontWeight: FontWeight.bold,
@@ -179,12 +126,13 @@ class HabitHistoryScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
+          // Deretan 7 Lingkaran Harian
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(7, (index) {
-              // Jika array dari backend kurang dari 7, sisanya anggap false
-              final bool isDone = index < weeklyStatus.length
-                  ? weeklyStatus[index] == true
+              // Pengamanan akses array
+              final bool isDone = habit.weeklyStatus.length > index
+                  ? habit.weeklyStatus[index]
                   : false;
 
               return Column(

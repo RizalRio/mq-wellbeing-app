@@ -1,7 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter/foundation.dart';
+import '../../../core/api/dio_client.dart';
 import '../data/habit_repository.dart';
 import '../domain/habit.dart';
-
 part 'habit_controller.g.dart';
 
 @riverpod
@@ -26,6 +27,34 @@ class HabitController extends _$HabitController {
       return true;
     } catch (e, st) {
       state = AsyncError(e, st);
+      return false;
+    }
+  }
+
+  // Di dalam class HabitController / Notifier Anda
+  Future<bool> toggleHabitLog(String habitId, bool isCompleted) async {
+    try {
+      // 1. Terjemahkan boolean ke teks untuk Golang
+      final String status = isCompleted ? 'completed' : 'skipped';
+
+      // 2. Format tanggal ke YYYY-MM-DD secara manual (Aman dari zona waktu)
+      final now = DateTime.now();
+      final String year = now.year.toString();
+      final String month = now.month.toString().padLeft(2, '0');
+      final String day = now.day.toString().padLeft(2, '0');
+      final String dateStr = "$year-$month-$day";
+
+      // 3. Kirim ke API
+      final dio = ref.read(dioProvider);
+      final response = await dio.post(
+        '/habits/log',
+        data: {'habit_id': habitId, 'status': status, 'date': dateStr},
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      // Catat error di terminal
+      debugPrint('Gagal mengirim log habit: $e');
       return false;
     }
   }
