@@ -63,7 +63,7 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Profil')),
       body: profileState.when(
-        data: (userId) => Padding(
+        data: (user) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 48.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -86,10 +86,22 @@ class ProfileScreen extends ConsumerWidget {
 
               Text('ID Pengguna', style: theme.textTheme.bodyMedium),
               const SizedBox(height: 8),
+
+              // PERBAIKAN: Panggil dari objek user
               Text(
-                userId,
+                user.id,
                 style: theme.textTheme.titleMedium,
                 textAlign: TextAlign.center,
+              ),
+
+              // BONUS: Menampilkan Email Pengguna
+              const SizedBox(height: 16),
+              Text(
+                user.email,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
 
               const Spacer(),

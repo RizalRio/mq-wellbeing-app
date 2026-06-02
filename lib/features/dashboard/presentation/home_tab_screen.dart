@@ -53,16 +53,33 @@ class HomeTabScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       profileState.when(
-                        data: (userId) => Text(
-                          'Kawan \u{1F33F}', // Emoji Daun (Earthy)
+                        data: (user) {
+                          // PERBAIKAN: Ekstrak nama depan dari objek User
+                          final String fullName = user.fullName;
+
+                          // Ambil kata pertama (Nama Depan), jika kosong gunakan fallback 'Kawan'
+                          final String firstName = fullName.isNotEmpty
+                              ? fullName.trim().split(' ').first
+                              : 'Kawan';
+
+                          return Text(
+                            '$firstName \u{1F33F}', // Output: Rizal 🌿
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        },
+                        loading: () => Text(
+                          'Memuat...',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                        ),
+                        error: (_, __) => Text(
+                          'Kawan \u{1F33F}',
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
-                        ),
-                        loading: () => const Text('Memuat...'),
-                        error: (_, __) => Text(
-                          'Kawan \u{1F33F}',
-                          style: theme.textTheme.titleLarge,
                         ),
                       ),
                     ],

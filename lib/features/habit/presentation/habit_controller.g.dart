@@ -6,7 +6,7 @@ part of 'habit_controller.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$habitControllerHash() => r'f58dcf4da57828275146aee226029e7c7889ebfd';
+String _$habitControllerHash() => r'ad615995e98001b8dbfd6efdcc0b447f225b2c7e';
 
 /// See also [HabitController].
 @ProviderFor(HabitController)
