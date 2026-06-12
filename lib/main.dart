@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'features/auth/presentation/login_screen.dart';
+import 'features/core/presentation/main_screen.dart';
 // Import file tema yang baru dibuat
 import 'core/theme/app_theme.dart';
 
@@ -14,10 +14,10 @@ class WellbeingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Wellbeing App',
+      title: 'TIKES - Wellbeing App',
       // Gunakan lightTheme dari AppTheme
       theme: AppTheme.lightTheme,
-      home: const LoginScreen(),
+      home: const MainScreen(),
     );
   }
 }

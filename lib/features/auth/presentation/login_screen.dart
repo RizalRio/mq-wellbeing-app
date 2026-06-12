@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'register_screen.dart';
 import 'auth_controller.dart';
-import '../../dashboard/presentation/dashboard_screen.dart';
+import '../../core/presentation/main_screen.dart'; // Pastikan path ini benar sesuai struktur proyek Anda
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -63,7 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const DashboardScreen()),
+              MaterialPageRoute(builder: (context) => const MainScreen()),
             );
           }
         },

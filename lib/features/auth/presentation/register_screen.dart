@@ -3,8 +3,6 @@ import 'package:flutter/services.dart'; // Ditambahkan untuk HapticFeedback
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth_controller.dart';
-// Import halaman login untuk rute kembali
-import 'login_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
