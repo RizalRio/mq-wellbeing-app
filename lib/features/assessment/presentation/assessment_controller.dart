@@ -21,7 +21,7 @@ class AssessmentController extends _$AssessmentController {
 
       // 2. Tembak ke API (Menggunakan UUID statis)
       final repo = ref.read(assessmentRepositoryProvider);
-      const String staticAssessmentId = '11111111-1111-1111-1111-111111111111';
+      const String staticAssessmentId = 'db9b1ad7-6351-46bb-9965-0a6e3ee217fb';
 
       final result = await repo.calculateAssessment(
         staticAssessmentId,
