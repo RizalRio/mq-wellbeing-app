@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../insight/presentation/insight_controller.dart';
-import '../../insight/domain/insight_summary.dart';
-
-import '../../assessment/presentation/assessment_screen.dart';
 import '../../mood_tracker/presentation/mood_screen.dart';
 import '../../mood_tracker/presentation/mood_history_screen.dart';
 import '../../journal/presentation/journal_screen.dart';
@@ -16,6 +12,14 @@ import '../../habit/presentation/habit_history_screen.dart';
 class FeelingTabScreen extends ConsumerWidget {
   const FeelingTabScreen({super.key});
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Selamat pagi';
+    if (hour < 15) return 'Selamat siang';
+    if (hour < 18) return 'Selamat sore';
+    return 'Selamat malam';
+  }
+
   void _showAddMenu(BuildContext context) {
     HapticFeedback.mediumImpact();
     final theme = Theme.of(context);
@@ -23,80 +27,98 @@ class FeelingTabScreen extends ConsumerWidget {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 24.0,
-              horizontal: 16.0,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurface.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(2),
+        return Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colorScheme.onSurface.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Apa yang ingin kamu catat?',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 16),
-                _buildMenuOption(
-                  context,
-                  icon: Icons.mood,
-                  label: 'Perasaan Hari Ini (Mood)',
-                  color: Colors.orange.shade300,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MoodScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildMenuOption(
-                  context,
-                  icon: Icons.auto_stories_outlined,
-                  label: 'Tulis Jurnal Refleksi',
-                  color: colorScheme.tertiary,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const JournalScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildMenuOption(
-                  context,
-                  icon: Icons.check_circle_outline,
-                  label: 'Tambah Target Kebiasaan',
-                  color: colorScheme.primary,
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HabitScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                  const SizedBox(height: 24),
+                  Text(
+                    'Catat sekarang',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pilih apa yang ingin kamu rekam hari ini.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.55),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSheetActionCard(
+                    context,
+                    icon: Icons.mood_rounded,
+                    label: 'Perasaan Hari Ini',
+                    description: 'Rekam suasana hatimu sekarang',
+                    containerColor: colorScheme.primary.withOpacity(0.15),
+                    iconColor: colorScheme.primary,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MoodScreen()),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSheetActionCard(
+                    context,
+                    icon: Icons.auto_stories_rounded,
+                    label: 'Tulis Jurnal Refleksi',
+                    description: 'Ungkapkan pikiran dan perasaanmu',
+                    containerColor: colorScheme.secondary.withOpacity(0.15),
+                    iconColor: colorScheme.secondary,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const JournalScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSheetActionCard(
+                    context,
+                    icon: Icons.task_alt_rounded,
+                    label: 'Tambah Target Kebiasaan',
+                    description: 'Bangun rutinitas positif baru',
+                    containerColor: colorScheme.tertiary.withOpacity(0.6),
+                    iconColor: colorScheme.onSurface.withOpacity(0.7),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const HabitScreen()),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -104,346 +126,458 @@ class FeelingTabScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMenuOption(
+  Widget _buildSheetActionCard(
     BuildContext context, {
     required IconData icon,
     required String label,
-    required Color color,
+    required String description,
+    required Color containerColor,
+    required Color iconColor,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.2),
-          shape: BoxShape.circle,
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.colorScheme.onSurface.withOpacity(0.08),
+            ), // Border tipis minimalis
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: containerColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: iconColor, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: theme.colorScheme.onSurface.withOpacity(0.3),
+              ),
+            ],
+          ),
         ),
-        child: Icon(icon, color: color),
       ),
-      title: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-      ),
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
     );
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final insightState = ref.watch(insightControllerProvider);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pusat Insight'),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(insightControllerProvider.notifier).refreshInsight(),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24.0),
-          children: [
-            insightState.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 40.0),
-                child: Center(child: CircularProgressIndicator()),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ── Custom Header ──────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getGreeting(),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Ruang Refleksi',
+                                style: theme.textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Add button di pojok kanan atas
+                        GestureDetector(
+                          onTap: () => _showAddMenu(context),
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorScheme.primary.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.add_rounded,
+                              color: colorScheme.surface,
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Pantau perjalanan emosional dan rutinitasmu.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withOpacity(0.6),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              error: (error, _) =>
-                  _buildErrorCard(context, error.toString(), ref),
-              data: (summary) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Lapis 1: Hero Section (Skor Utama)
-                  _buildInsightBoard(context, summary),
+            ),
 
-                  const SizedBox(height: 40),
-                  Text('Detail Pemantauan', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 16),
+            // Hero Banner
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                child: _HeroBanner(colorScheme: colorScheme, theme: theme),
+              ),
+            ),
 
-                  // Lapis 2: Kartu Modul Dinamis
-                  _buildDynamicModuleCard(
-                    context,
-                    title: 'Indeks TIKES (SPK)',
-                    subtitle: 'Skor asesmen terakhir Anda.',
-                    metricValue: summary.assessmentScore.toStringAsFixed(1),
-                    metricLabel: '/ 100',
-                    icon: Icons.spa_outlined,
+            // Section Label
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+                child: Text(
+                  'Lihat riwayatmu',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ),
+
+            // Summary Cards
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _ModernSummaryCard(
+                    title: 'Riwayat Mood',
+                    subtitle: 'Lihat fluktuasi energimu minggu ini.',
+                    icon: Icons.bar_chart_rounded,
+                    accentColor: colorScheme.primary,
+                    containerColor: colorScheme.primary.withOpacity(0.15),
                     onTap: () {
                       HapticFeedback.lightImpact();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AssessmentScreen(),
+                          builder: (_) => const MoodHistoryScreen(),
                         ),
                       );
                     },
                   ),
                   const SizedBox(height: 12),
-                  _buildDynamicModuleCard(
-                    context,
-                    title: 'Rata-rata Mood',
-                    subtitle: 'Kondisi 7 hari terakhir.',
-                    metricValue: summary.averageMood.toStringAsFixed(1),
-                    metricLabel: '/ 5.0',
-                    icon: Icons.mood,
+                  _ModernSummaryCard(
+                    title: 'Jurnal Tersimpan',
+                    subtitle: 'Baca kembali pemikiran dan refleksimu.',
+                    icon: Icons.history_edu_rounded,
+                    accentColor: colorScheme.secondary,
+                    containerColor: colorScheme.secondary.withOpacity(0.15),
                     onTap: () {
                       HapticFeedback.lightImpact();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const MoodHistoryScreen(),
+                          builder: (_) => const JournalHistoryScreen(),
                         ),
                       );
                     },
                   ),
                   const SizedBox(height: 12),
-                  _buildDynamicModuleCard(
-                    context,
-                    title: 'Konsistensi Kebiasaan',
-                    subtitle: 'Target yang diselesaikan.',
-                    metricValue: summary.habitCompletionRate.toInt().toString(),
-                    metricLabel: '%',
+                  _ModernSummaryCard(
+                    title: 'Jejak Kebiasaan',
+                    subtitle: 'Pantau konsistensi dan lencanamu.',
                     icon: Icons.checklist_rtl_rounded,
+                    accentColor: colorScheme.onSurface.withOpacity(0.7),
+                    containerColor: colorScheme.tertiary.withOpacity(0.6),
                     onTap: () {
                       HapticFeedback.lightImpact();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const HabitHistoryScreen(),
+                          builder: (_) => const HabitHistoryScreen(),
                         ),
                       );
                     },
                   ),
-                  const SizedBox(height: 12),
-                  _buildDynamicModuleCard(
-                    context,
-                    title: 'Jurnal Refleksi',
-                    subtitle: 'Catatan pikiran Anda.',
-                    metricValue: '-', // Placeholder statis untuk Jurnal
-                    metricLabel: 'Entri',
-                    icon: Icons.history_edu,
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const JournalHistoryScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                  const SizedBox(height: 32),
+                ]),
               ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddMenu(context),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        child: const Icon(Icons.add, size: 28),
-      ),
     );
   }
+}
 
-  // Komponen UI: Kartu Indikator Keseimbangan Utama
-  Widget _buildInsightBoard(BuildContext context, InsightSummary summary) {
-    final theme = Theme.of(context);
-    final hasAlert =
-        summary.riskAlertStatus != null && summary.riskAlertStatus!.isNotEmpty;
+// Hero Banner Widget
+class _HeroBanner extends StatelessWidget {
+  const _HeroBanner({required this.colorScheme, required this.theme});
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withOpacity(0.4),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: theme.colorScheme.primary.withOpacity(0.2),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    summary.wellbeingScore.toString(),
-                    style: theme.textTheme.displayMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                      height: 1.0,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6.0),
-                    child: Text(
-                      '/ 100',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.primary.withOpacity(0.6),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  summary.scoreCategory,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                summary.dailyInsight,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  height: 1.5,
-                  color: theme.colorScheme.onSurface.withOpacity(0.8),
-                ),
-              ),
-            ],
-          ),
+  final ColorScheme colorScheme;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [colorScheme.primary, colorScheme.secondary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-
-        if (hasAlert) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.errorContainer.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: theme.colorScheme.error.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: theme.colorScheme.error,
-                  size: 28,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Hari ini',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.surface,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Perhatian Khusus',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: theme.colorScheme.error,
-                          fontWeight: FontWeight.bold,
+                const SizedBox(height: 12),
+                Text(
+                  'Bagaimana\nperasaanmu?',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.surface,
+                    height: 1.2,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MoodScreen()),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.onSurface.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        summary.riskAlertStatus!,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onErrorContainer,
-                          height: 1.4,
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Catat Mood',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 16,
+                          color: colorScheme.primary,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 16),
+          // Decorative emoji stack
+          Column(
+            children: [
+              _EmojiCircle(emoji: '😊', size: 52, colorScheme: colorScheme),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _EmojiCircle(emoji: '😔', size: 40, colorScheme: colorScheme),
+                  const SizedBox(width: 6),
+                  _EmojiCircle(emoji: '🔥', size: 40, colorScheme: colorScheme),
+                ],
+              ),
+            ],
+          ),
         ],
-      ],
+      ),
     );
   }
+}
 
-  // Komponen UI: Penanganan Error Minimalis
-  Widget _buildErrorCard(BuildContext context, String message, WidgetRef ref) {
+class _EmojiCircle extends StatelessWidget {
+  const _EmojiCircle({
+    required this.emoji,
+    required this.size,
+    required this.colorScheme,
+  });
+
+  final String emoji;
+  final double size;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(20),
+        color: colorScheme.surface.withOpacity(0.2),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: colorScheme.surface.withOpacity(0.3),
+          width: 1.5,
+        ),
       ),
-      child: Column(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 32),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () =>
-                ref.read(insightControllerProvider.notifier).refreshInsight(),
-            child: const Text('Coba Lagi'),
-          ),
-        ],
+      child: Center(
+        child: Text(emoji, style: TextStyle(fontSize: size * 0.45)),
       ),
     );
   }
+}
 
-  // Komponen UI: Kartu Modul dengan Nilai Metrik Dinamis
-  Widget _buildDynamicModuleCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required String metricValue,
-    required String metricLabel,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+// Modern Summary Card
+class _ModernSummaryCard extends StatelessWidget {
+  const _ModernSummaryCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accentColor,
+    required this.containerColor,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accentColor;
+  final Color containerColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    final colorScheme = theme.colorScheme;
+
+    return Material(
+      color: colorScheme.surface,
+      borderRadius: BorderRadius.circular(24),
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: theme.colorScheme.onSurface.withOpacity(0.05)),
-      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+        borderRadius: BorderRadius.circular(24),
+        splashColor: accentColor.withOpacity(0.08),
+        highlightColor: accentColor.withOpacity(0.04),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: colorScheme.onSurface.withOpacity(0.08),
+              width: 1,
+            ),
+          ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(16),
+                  color: containerColor,
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(
-                  icon,
-                  size: 24,
-                  color: theme.colorScheme.onSecondaryContainer,
-                ),
+                child: Icon(icon, color: accentColor, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -452,38 +586,36 @@ class FeelingTabScreen extends ConsumerWidget {
                   children: [
                     Text(
                       title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.onSurface,
+                        letterSpacing: -0.1,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        color: colorScheme.onSurface.withOpacity(0.5),
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
-              // Bagian Metrik di Kanan
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    metricValue,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  Text(
-                    metricLabel,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 16,
+                  color: accentColor,
+                ),
               ),
             ],
           ),
