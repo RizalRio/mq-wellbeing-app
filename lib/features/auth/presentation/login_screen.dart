@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'register_screen.dart';
 import 'auth_controller.dart';
 import '../../core/presentation/main_screen.dart'; // Pastikan path ini benar sesuai struktur proyek Anda
+import '../../counselor/presentation/counselor_dashboard_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -48,12 +49,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         },
         data: (user) {
           if (user != null) {
-            HapticFeedback.mediumImpact(); // Getaran sukses
+            HapticFeedback.mediumImpact();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Text('Senang melihatmu kembali!'),
-                backgroundColor: colorScheme
-                    .secondary, // Menggunakan warna Soft Teal dari tema
+                backgroundColor: colorScheme.secondary,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -61,10 +61,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             );
 
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
-            );
+            // BARU: Percabangan Rute Otomatis Berdasarkan Role
+            if (user.role == 'counselor') {
+              // Arahkan ke Dasbor Khusus Pakar
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CounselorDashboardScreen(),
+                ),
+              );
+            } else {
+              // Arahkan ke Dasbor Pengguna Awam (SAMPADA)
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const MainScreen()),
+              );
+            }
           }
         },
       );
