@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 // Import Tab 1 yang baru (akan kita buat selanjutnya)
 import '../../home/presentation/home_tab_screen.dart';
 import '../../reflection/presentation/feeling_tab_screen.dart';
+import '../../counseling/presentation/catalog_screen.dart';
 import '../../auth/presentation/profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -21,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     const HomeTabScreen(), // Tab 1: Ringkasan API yang baru kita buat
     const FeelingTabScreen(), // Tab 2: Catatan Mood/Habit
-    const Center(child: Text('Halaman Konsul (v0.1)')),
+    const CatalogScreen(), // Tab 3: Konseling Profesional
     const Center(child: Text('Komunitas Ruang Aman (v0.1)')),
     const ProfileScreen(), // Tab 5: Profil
   ];
