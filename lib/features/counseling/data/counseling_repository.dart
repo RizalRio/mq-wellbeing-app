@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/api/dio_client.dart';
 import '../domain/catalog.dart';
+import '../domain/booking.dart';
 
 class CounselingRepository {
   final Dio _dio;
@@ -29,6 +30,16 @@ class CounselingRepository {
       throw e.response?.data['error'] ?? 'Gagal memesan jadwal';
     } catch (e) {
       throw 'Terjadi kesalahan sistem';
+    }
+  }
+
+  Future<List<BookingHistory>> getBookingHistory() async {
+    try {
+      final response = await _dio.get('/bookings/history');
+      final List data = response.data['data'] ?? [];
+      return data.map((e) => BookingHistory.fromJson(e)).toList();
+    } on DioException catch (e) {
+      throw e.response?.data['message'] ?? 'Gagal memuat riwayat pemesanan';
     }
   }
 }

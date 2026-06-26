@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'counseling_controller.dart';
 import 'booking_controller.dart';
+import 'booking_history_screen.dart';
 
 class CatalogScreen extends ConsumerWidget {
   const CatalogScreen({super.key});
@@ -24,6 +25,23 @@ class CatalogScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Konseling Profesional'),
         centerTitle: true,
+        // PERUBAHAN: Menambahkan tombol Riwayat
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history_outlined),
+            tooltip: 'Riwayat Pemesanan',
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BookingHistoryScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8), // Padding estetika
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(counselingCatalogProvider),
