@@ -77,7 +77,7 @@ class MoodHistoryScreen extends ConsumerWidget {
                           context,
                           icon: Icons.insights_rounded,
                           title: 'Ringkasan Emosi',
-                          subtitle: '7 Hari Terakhir',
+                          subtitle: 'MInggu Ini',
                         ),
                         const SizedBox(height: 16),
                         _buildSummaryCard(context, historyData),
@@ -200,14 +200,32 @@ class MoodHistoryScreen extends ConsumerWidget {
   // Kartu Ringkasan: Donut Chart + Weekly Bar
   Widget _buildSummaryCard(
     BuildContext context,
-    List<Map<String, dynamic>> data,
+    List<Map<String, dynamic>> allData,
   ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final now = DateTime.now();
+    final startOfWeek = DateTime(
+      now.year,
+      now.month,
+      now.day - (now.weekday - 1),
+    );
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));
+
+    final List<Map<String, dynamic>> recentData = allData.where((m) {
+      try {
+        final d = DateTime.parse(m['logged_at'].toString()).toLocal();
+        final logDate = DateTime(d.year, d.month, d.day);
+        return !logDate.isBefore(startOfWeek) && !logDate.isAfter(endOfWeek);
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+
     // Hitung distribusi skor
     final Map<int, int> scoreCounts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
-    for (var item in data) {
+    for (var item in recentData) {
       final int s = item['score'] as int? ?? 0;
       if (scoreCounts.containsKey(s)) scoreCounts[s] = scoreCounts[s]! + 1;
     }
@@ -224,16 +242,16 @@ class MoodHistoryScreen extends ConsumerWidget {
 
     // Hitung rata-rata skor
     double avgScore = 0;
-    if (data.isNotEmpty) {
-      final total = data.fold<int>(
+    if (recentData.isNotEmpty) {
+      final total = recentData.fold<int>(
         0,
         (sum, e) => sum + (e['score'] as int? ?? 0),
       );
-      avgScore = total / data.length;
+      avgScore = total / recentData.length;
     }
 
     // Ambil data 7 hari terakhir untuk weekly bar
-    final weeklyData = _buildWeeklyData(data);
+    final weeklyData = _buildWeeklyData(allData);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -265,7 +283,7 @@ class MoodHistoryScreen extends ConsumerWidget {
                   painter: RingChartPainter(
                     counts: scoreCounts,
                     colors: _kScoreColors,
-                    total: data.length,
+                    total: recentData.length,
                     theme: theme,
                   ),
                   child: Center(
@@ -278,7 +296,7 @@ class MoodHistoryScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${data.length}',
+                          '${recentData.length}',
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w900,
                             height: 1,
@@ -343,7 +361,7 @@ class MoodHistoryScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$maxCount dari ${data.length} catatan',
+                      '$maxCount dari ${recentData.length} catatan',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurface.withOpacity(0.6),
                         fontWeight: FontWeight.w600,
@@ -354,7 +372,9 @@ class MoodHistoryScreen extends ConsumerWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
-                        value: data.isEmpty ? 0 : maxCount / data.length,
+                        value: recentData.isEmpty
+                            ? 0
+                            : maxCount / recentData.length,
                         backgroundColor: colorScheme.onSurface.withOpacity(
                           0.06,
                         ),
@@ -427,13 +447,19 @@ class MoodHistoryScreen extends ConsumerWidget {
     List<Map<String, dynamic>> allData,
   ) {
     final now = DateTime.now();
+    final startOfWeek = DateTime(
+      now.year,
+      now.month,
+      now.day - (now.weekday - 1),
+    );
     final days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
     final result = <Map<String, dynamic>>[];
 
-    for (int i = 6; i >= 0; i--) {
-      final day = now.subtract(Duration(days: i));
-      final dayLabel = days[day.weekday - 1];
-      final isToday = i == 0;
+    for (int i = 0; i < 7; i++) {
+      final day = startOfWeek.add(Duration(days: i));
+      final dayLabel = days[i];
+      final isToday =
+          day.year == now.year && day.month == now.month && day.day == now.day;
 
       // Cari entry untuk hari ini
       final entries = allData.where((e) {
@@ -470,7 +496,7 @@ class MoodHistoryScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '7 Hari Terakhir',
+          'Minggu Ini',
           style: theme.textTheme.bodySmall?.copyWith(
             color: colorScheme.onSurface.withOpacity(0.6),
             fontWeight: FontWeight.w700,

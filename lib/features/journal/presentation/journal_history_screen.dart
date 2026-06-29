@@ -759,10 +759,17 @@ class JournalHistoryScreen extends ConsumerWidget {
 
   int _countThisWeek(List<Map<String, dynamic>> journals) {
     final now = DateTime.now();
-    final weekAgo = now.subtract(const Duration(days: 7));
+    final startOfWeek = DateTime(
+      now.year,
+      now.month,
+      now.day - (now.weekday - 1),
+    );
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));
     return journals.where((j) {
       try {
-        return DateTime.parse(j['created_at'].toString()).isAfter(weekAgo);
+        final d = DateTime.parse(j['created_at'].toString()).toLocal();
+        final logDate = DateTime(d.year, d.month, d.day);
+        return !logDate.isBefore(startOfWeek) && !logDate.isAfter(endOfWeek);
       } catch (_) {
         return false;
       }

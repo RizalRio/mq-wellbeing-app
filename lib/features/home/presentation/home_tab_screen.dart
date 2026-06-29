@@ -3,46 +3,128 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../insight/presentation/insight_controller.dart';
+import '../../insight/domain/insight_summary.dart';
+
 import '../../auth/presentation/profile_controller.dart';
 import '../../mood_tracker/presentation/mood_screen.dart';
+import '../../mood_tracker/presentation/mood_history_screen.dart';
 import '../../journal/presentation/journal_screen.dart';
+import '../../journal/presentation/journal_history_screen.dart';
 import '../../habit/presentation/habit_screen.dart';
+import '../../habit/presentation/habit_controller.dart';
+import '../../assessment/presentation/assessment_screen.dart';
 
 // ─────────────────────────────────────────────────
-// Data Model Simulasi API (/api/v1/dashboard/summary)
+// Data Model & Provider Khusus Log Hari Ini (Grid)
 // ─────────────────────────────────────────────────
-class DashboardSummary {
-  final int wellbeingScore;
-  final String moodAvg;
-  final String journalCount;
-  final String habitPercent;
+class DailyLogStatus {
   final bool isMoodDone;
+  final String moodStatusText;
   final bool isJournalDone;
+  final String journalStatusText;
+  final bool isHabitDone;
   final String habitStatusText;
+  final bool isAssessmentDone;
+  final String assessmentStatusText;
 
-  DashboardSummary({
-    required this.wellbeingScore,
-    required this.moodAvg,
-    required this.journalCount,
-    required this.habitPercent,
+  DailyLogStatus({
     required this.isMoodDone,
+    required this.moodStatusText,
     required this.isJournalDone,
+    required this.journalStatusText,
+    required this.isHabitDone,
     required this.habitStatusText,
+    required this.isAssessmentDone,
+    required this.assessmentStatusText,
   });
 }
 
+// Helper Lokal: Mengubah Skor Mood Menjadi Teks
+String _getMoodStatusLabel(int score) {
+  switch (score) {
+    case 5:
+      return 'Sangat Baik';
+    case 4:
+      return 'Baik';
+    case 3:
+      return 'Netral';
+    case 2:
+      return 'Buruk';
+    case 1:
+      return 'Sangat Buruk';
+    default:
+      return 'Selesai';
+  }
+}
+
 // Provider untuk mengambil data agregasi dari backend
-final dashboardSummaryProvider = FutureProvider<DashboardSummary>((ref) async {
-  // Simulasi jeda jaringan API (hapus delay ini saat integrasi Dio/HTTP asli)
-  await Future.delayed(const Duration(seconds: 2));
-  return DashboardSummary(
-    wellbeingScore: 78,
-    moodAvg: '4.2 / 5',
-    journalCount: '5 / 7 hr',
-    habitPercent: '83 %',
-    isMoodDone: false,
-    isJournalDone: false,
-    habitStatusText: '2 / 6 selesai',
+final dailyLogStatusProvider = FutureProvider.autoDispose<DailyLogStatus>((
+  ref,
+) async {
+  final moodList = await ref.watch(moodHistoryProvider.future);
+  final journalList = await ref.watch(journalHistoryProvider.future);
+  final habitList = await ref.watch(habitControllerProvider.future);
+
+  final now = DateTime.now();
+  final todayIdx = now.weekday - 1;
+
+  // Filter Data Mood Hari Ini
+  final todayMoods = moodList.where((m) {
+    try {
+      final d = DateTime.parse(m['logged_at'].toString()).toLocal();
+      return d.year == now.year && d.month == now.month && d.day == now.day;
+    } catch (_) {
+      return false;
+    }
+  }).toList();
+  final bool isMoodDone = todayMoods.isNotEmpty;
+  String moodStatusText = isMoodDone
+      ? _getMoodStatusLabel(todayMoods.first['score'] as int? ?? 0)
+      : 'Belum log';
+
+  // Filter Data Jurnal Hari Ini
+  final todayJournals = journalList.where((j) {
+    try {
+      final d = DateTime.parse(j['created_at'].toString()).toLocal();
+      return d.year == now.year && d.month == now.month && d.day == now.day;
+    } catch (_) {
+      return false;
+    }
+  }).toList();
+  final bool isJournalDone = todayJournals.isNotEmpty;
+  String journalStatusText = isJournalDone
+      ? '${todayJournals.length} Catatan'
+      : 'Belum log';
+
+  // Filter Data Habit Hari Ini
+  final int totalHabits = habitList.length;
+  final int doneHabits = habitList
+      .where(
+        (h) => h.weeklyStatus.length > todayIdx && h.weeklyStatus[todayIdx],
+      )
+      .length;
+  bool isHabitDone = false;
+  String habitStatusText = 'Belum log';
+
+  if (totalHabits == 0) {
+    habitStatusText = 'Tidak ada target';
+  } else if (doneHabits == totalHabits) {
+    isHabitDone = true;
+    habitStatusText = 'Semua Selesai';
+  } else {
+    habitStatusText = '$doneHabits/$totalHabits Selesai';
+  }
+
+  return DailyLogStatus(
+    isMoodDone: isMoodDone,
+    moodStatusText: moodStatusText,
+    isJournalDone: isJournalDone,
+    journalStatusText: journalStatusText,
+    isHabitDone: isHabitDone,
+    habitStatusText: habitStatusText,
+    isAssessmentDone: false,
+    assessmentStatusText: 'Cek kondisimu',
   );
 });
 
@@ -132,9 +214,8 @@ class HomeTabScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileState = ref.watch(profileControllerProvider);
-    final summaryState = ref.watch(
-      dashboardSummaryProvider,
-    ); // Pantau API Dasbor
+    final insightState = ref.watch(insightControllerProvider);
+    final logGridState = ref.watch(dailyLogStatusProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -170,7 +251,7 @@ class HomeTabScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9F6F0),
-      appBar: _buildAppBar(context),
+      appBar: _buildAppBar(context, ref),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const ClampingScrollPhysics(),
@@ -186,19 +267,18 @@ class HomeTabScreen extends ConsumerWidget {
               // Penanganan State untuk Skor Keseimbangan
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: summaryState.when(
+                child: insightState.when(
                   data: (data) => _buildWellbeingScoreCard(context, data),
                   loading: () => _buildWellbeingSkeleton(context),
                   error: (err, stack) => _buildWellbeingScoreCard(
                     context,
-                    DashboardSummary(
+                    InsightSummary(
                       wellbeingScore: 0,
-                      moodAvg: '-',
-                      journalCount: '-',
-                      habitPercent: '-',
-                      isMoodDone: false,
-                      isJournalDone: false,
-                      habitStatusText: 'Gagal memuat',
+                      scoreCategory: 'Gagal',
+                      dailyInsight: 'Gagal memuat data ringkasan.',
+                      assessmentScore: 0,
+                      averageMood: 0,
+                      habitCompletionRate: 0,
                     ),
                   ),
                 ),
@@ -218,13 +298,10 @@ class HomeTabScreen extends ConsumerWidget {
               // Penanganan State untuk Log Grid
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: summaryState.when(
-                  data: (data) => _buildLogGrid(context, data),
+                child: logGridState.when(
+                  data: (data) => _buildLogGrid(context, ref, data),
                   loading: () => _buildLogGridSkeleton(context),
-                  error: (_, __) => _buildLogGrid(
-                    context,
-                    null,
-                  ), // Tampilkan default jika error
+                  error: (_, __) => _buildLogGrid(context, ref, null),
                 ),
               ),
               const SizedBox(height: 32),
@@ -255,7 +332,7 @@ class HomeTabScreen extends ConsumerWidget {
   // ─────────────────────────────────────────────────
   // AppBar, Header, Quote & Insight (Dipertahankan)
   // ─────────────────────────────────────────────────
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return AppBar(
@@ -294,7 +371,12 @@ class HomeTabScreen extends ConsumerWidget {
           ],
         ),
         IconButton(
-          onPressed: () {},
+          onPressed: () {
+            ref.read(insightControllerProvider.notifier).refreshInsight();
+            ref.invalidate(moodHistoryProvider);
+            ref.invalidate(journalHistoryProvider);
+            ref.invalidate(habitControllerProvider);
+          },
           icon: Icon(
             Icons.sync_outlined,
             color: colorScheme.onSurface.withOpacity(0.35),
@@ -341,7 +423,7 @@ class HomeTabScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
           child: Column(
@@ -412,74 +494,94 @@ class HomeTabScreen extends ConsumerWidget {
             ],
           ),
         ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.primary.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+        // Avatar Profil di kanan
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              profileState.when(
+                data: (user) {
+                  final fullName = user.fullName?.toString() ?? '';
+
+                  final initial = fullName.trim().isNotEmpty
+                      ? fullName
+                            .trim()
+                            .split(' ')
+                            .take(2)
+                            .map((e) => e[0])
+                            .join()
+                            .toUpperCase()
+                      : 'U';
+
+                  return Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.primary.withOpacity(0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      initial,
+                      style: TextStyle(
+                        color: colorScheme.surface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                        fontFamily: 'Nunito',
+                      ),
+                    ),
+                  );
+                },
+
+                loading: () => Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: colorScheme.onSurface.withOpacity(0.08),
+                    shape: BoxShape.circle,
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('🔥', style: TextStyle(fontSize: 12)),
-                  const SizedBox(width: 4),
-                  Text(
-                    '7 hari',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
+                ),
+
+                error: (_, __) => Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'U',
+                    style: TextStyle(
+                      color: colorScheme.surface,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'Nunito',
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [colorScheme.primary, colorScheme.secondary],
                 ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.primary.withOpacity(0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
-              child: Icon(
-                Icons.person_outline,
-                color: colorScheme.surface,
-                size: 22,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
   }
 
   // ─────────────────────────────────────────────────
-  // Komponen Dinamis: Wellbeing Score Card
+  // Wellbeing Score Card
   // ─────────────────────────────────────────────────
-  Widget _buildWellbeingScoreCard(BuildContext context, DashboardSummary data) {
+  Widget _buildWellbeingScoreCard(BuildContext context, InsightSummary data) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Container(
@@ -511,10 +613,7 @@ class HomeTabScreen extends ConsumerWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _buildScoreRing(
-                      context,
-                      data.wellbeingScore,
-                    ), // Nilai dinamis
+                    _buildScoreRing(context, data.wellbeingScore),
                     const SizedBox(width: 20),
                     Expanded(
                       child: Column(
@@ -530,7 +629,7 @@ class HomeTabScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'MINGGU INI',
+                              'Insight Anda',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.surface,
                                 fontWeight: FontWeight.w800,
@@ -541,7 +640,7 @@ class HomeTabScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Keseimbangan\nHidupmu',
+                            data.scoreCategory.toUpperCase(),
                             style: theme.textTheme.titleMedium?.copyWith(
                               color: colorScheme.surface,
                               fontWeight: FontWeight.w900,
@@ -551,7 +650,7 @@ class HomeTabScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Agregat dari Mood, Jurnal & Habit',
+                            data.dailyInsight,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colorScheme.surface.withOpacity(0.72),
                               fontSize: 12,
@@ -559,11 +658,6 @@ class HomeTabScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: colorScheme.surface.withOpacity(0.6),
-                      size: 26,
                     ),
                   ],
                 ),
@@ -577,23 +671,23 @@ class HomeTabScreen extends ConsumerWidget {
                   children: [
                     _buildSubMetric(
                       context,
-                      '😊',
+                      Icons.psychology_rounded,
+                      'Asesmen',
+                      data.assessmentScore.toStringAsFixed(0),
+                    ),
+                    _buildSubMetricDivider(context),
+                    _buildSubMetric(
+                      context,
+                      Icons.mood_rounded,
                       'Mood',
-                      data.moodAvg,
+                      data.averageMood.toStringAsFixed(1),
                     ), // Nilai dinamis
                     _buildSubMetricDivider(context),
                     _buildSubMetric(
                       context,
-                      '📝',
-                      'Jurnal',
-                      data.journalCount,
-                    ), // Nilai dinamis
-                    _buildSubMetricDivider(context),
-                    _buildSubMetric(
-                      context,
-                      '✅',
+                      Icons.task_alt_rounded,
                       'Habit',
-                      data.habitPercent,
+                      '${data.habitCompletionRate.toStringAsFixed(0)}%',
                     ), // Nilai dinamis
                   ],
                 ),
@@ -672,7 +766,7 @@ class HomeTabScreen extends ConsumerWidget {
 
   Widget _buildSubMetric(
     BuildContext context,
-    String emoji,
+    IconData icon,
     String label,
     String value,
   ) {
@@ -681,7 +775,7 @@ class HomeTabScreen extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 18)),
+          Icon(icon, size: 24, color: colorScheme.surface.withOpacity(0.9)),
           const SizedBox(height: 5),
           Text(
             value,
@@ -715,32 +809,50 @@ class HomeTabScreen extends ConsumerWidget {
   // ─────────────────────────────────────────────────
   // Komponen Dinamis: Log Grid
   // ─────────────────────────────────────────────────
-  Widget _buildLogGrid(BuildContext context, DashboardSummary? data) {
+  Widget _buildLogGrid(
+    BuildContext context,
+    WidgetRef ref,
+    DailyLogStatus? data,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
+    const Color asesmenColor = Color(0xFF9B8EC4);
+
     final actions = [
       _LogAction(
         icon: Icons.mood_rounded,
         label: 'Mood',
-        sublabel: data?.isMoodDone == true ? 'Selesai' : 'Belum log',
+        sublabel: data?.isMoodDone == true
+            ? (data?.moodStatusText ?? 'Selesai')
+            : 'Belum log',
         color: colorScheme.primary,
         bgColor: colorScheme.primary.withOpacity(0.15),
         isDone: data?.isMoodDone ?? false,
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const MoodScreen()),
-        ),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MoodScreen()),
+          );
+          ref.read(insightControllerProvider.notifier).refreshInsight();
+          ref.invalidate(moodHistoryProvider);
+        },
       ),
       _LogAction(
         icon: Icons.auto_stories_rounded,
         label: 'Jurnal',
-        sublabel: data?.isJournalDone == true ? 'Selesai' : 'Belum log',
+        sublabel: data?.isJournalDone == true
+            ? (data?.journalStatusText ?? 'Selesai')
+            : 'Belum log',
         color: colorScheme.secondary,
         bgColor: colorScheme.secondary.withOpacity(0.15),
         isDone: data?.isJournalDone ?? false,
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const JournalScreen()),
-        ),
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const JournalScreen()),
+          );
+          ref.read(insightControllerProvider.notifier).refreshInsight();
+          ref.invalidate(journalHistoryProvider);
+        },
       ),
       _LogAction(
         icon: Icons.check_circle_rounded,
@@ -748,47 +860,109 @@ class HomeTabScreen extends ConsumerWidget {
         sublabel: data?.habitStatusText ?? 'Belum log',
         color: colorScheme.onSurface.withOpacity(0.6),
         bgColor: colorScheme.tertiary.withOpacity(0.5),
-        isDone: (data != null && data.habitPercent == '100 %'),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const HabitScreen()),
-        ),
+        isDone: data?.isHabitDone ?? false,
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const HabitScreen()),
+          );
+          ref.read(insightControllerProvider.notifier).refreshInsight();
+          ref.invalidate(habitControllerProvider);
+        },
+      ),
+      _LogAction(
+        icon: Icons.spa_outlined,
+        label: 'Asesmen',
+        sublabel: data?.isAssessmentDone == true
+            ? (data?.assessmentStatusText ?? 'Selesai')
+            : 'Cek kondisimu',
+        color: asesmenColor,
+        bgColor: asesmenColor.withOpacity(0.15),
+        isDone: data?.isAssessmentDone ?? false,
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AssessmentScreen()),
+          );
+          ref.read(insightControllerProvider.notifier).refreshInsight();
+        },
       ),
     ];
 
-    return Row(
-      children: List.generate(
-        actions.length,
-        (i) => Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: i < actions.length - 1 ? 12 : 0),
-            child: _buildLogCard(context, actions[i]),
-          ),
+    // Kembali menggunakan layout kolom dan baris (2x2 Grid)
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildLogCard(context, actions[0])),
+            const SizedBox(width: 12),
+            Expanded(child: _buildLogCard(context, actions[1])),
+          ],
         ),
-      ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildLogCard(context, actions[2])),
+            const SizedBox(width: 12),
+            Expanded(child: _buildLogCard(context, actions[3])),
+          ],
+        ),
+      ],
     );
   }
 
-  // Skeleton Loader untuk Log Grid
   Widget _buildLogGridSkeleton(BuildContext context) {
-    return Row(
-      children: List.generate(
-        3,
-        (i) => Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: i < 2 ? 12 : 0),
-            child: Container(
-              height: 140, // Perkiraan tinggi kartu grid
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(20),
+    final baseColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.06);
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -805,7 +979,8 @@ class HomeTabScreen extends ConsumerWidget {
           action.onTap();
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+          // Padding dibuat lebih rapat agar pas di layout grid 50%
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
@@ -813,57 +988,59 @@ class HomeTabScreen extends ConsumerWidget {
               width: 1.5,
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Ikon di kiri (Ukuran disesuaikan agar proporsional)
               Container(
-                width: 50,
-                height: 50,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: action.bgColor,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(action.icon, color: action.color, size: 25),
+                child: Icon(action.icon, color: action.color, size: 20),
               ),
-              const SizedBox(height: 12),
-              Text(
-                action.label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: colorScheme.onSurface,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                action.sublabel,
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (action.isDone) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: action.color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '✓ Selesai',
-                    style: TextStyle(
-                      color: action.color,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Nunito',
+              const SizedBox(width: 12),
+
+              // Judul & Status di kanan
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      action.label,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: colorScheme.onSurface,
+                        fontSize:
+                            13, // Sedikit dikecilkan agar aman di layar sempit
+                        height: 1.1,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    // Logic status: Jika selesai tampil teks sukses, jika tidak tampil sublabel "Belum log"
+                    Text(
+                      action.isDone ? '✓ ${action.sublabel}' : action.sublabel,
+                      style: TextStyle(
+                        color: action.isDone
+                            ? action.color
+                            : colorScheme.onSurface.withOpacity(0.5),
+                        fontSize: 11,
+                        fontWeight: action.isDone
+                            ? FontWeight.w800
+                            : FontWeight.w500,
+                        fontFamily: 'Nunito',
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ],
           ),
         ),
